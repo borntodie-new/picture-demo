@@ -1,6 +1,7 @@
 import os
 import uuid
 import datetime
+import configparser
 from urllib3.exceptions import MaxRetryError
 from minio import Minio
 from minio.error import S3Error
@@ -18,12 +19,16 @@ def get_bucket_name() -> str:
 
 # get_client 获取 Minio 客户端连接对象
 def get_client():
+    config = configparser.ConfigParser()
+
+    # 读取配置文件
+    config.read('config.ini')
     try:
         client = Minio(
-            "127.0.0.1:9000",
-            access_key="DlkbXZW6UyFLYLSbOCQJ",
-            secret_key="MBjYEv7iTYDqfJlfi29JJUbx8KKKafxEm2aLg7rp",
-            secure=False
+            f"{config.get('DEFAULT', 'Host')}:{config.get('DEFAULT', 'Port')}",
+            access_key=config.get('DEFAULT', 'AccessKey'),
+            secret_key=config.get('DEFAULT', 'SecretKey'),
+            secure=config.getboolean('DEFAULT', 'Secure')
         )
         if not client.bucket_exists(bucket_name=get_bucket_name()):
             client.make_bucket(get_bucket_name())
@@ -66,6 +71,6 @@ async def get_file(bucket_name: str, file_name: str, clien: Minio = Depends(get_
 
 
 @router.delete("/{bucket_name}/{file_name}")
-async def remove(bucket_name: str, file_name: str, clien: Minio = Depends(get_client)):
+async def remove_file(bucket_name: str, file_name: str, clien: Minio = Depends(get_client)):
     clien.remove_object(bucket_name, file_name)
     return JSONResponse(content={"code": status.HTTP_200_OK, "message": "操作成功"})
